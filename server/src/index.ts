@@ -68,9 +68,11 @@ mongoose.connect(MONGODB_URI)
     // Initialize & validate Gemini Model configuration
     await initializeGeminiModel();
 
-    app.listen(PORT, () => {
-      console.log(`JCCAD CIP Backend listening on port ${PORT}`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`JCCAD CIP Backend listening on port ${PORT}`);
+      });
+    }
   })
   .catch(async (err) => {
     console.error('Database connection failed. Starting server in offline test mode.');
@@ -78,9 +80,11 @@ mongoose.connect(MONGODB_URI)
     // Initialize & validate Gemini Model configuration
     await initializeGeminiModel();
 
-    app.listen(PORT, () => {
-      console.log(`JCCAD CIP Backend listening in offline mode on port ${PORT}`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`JCCAD CIP Backend listening in offline mode on port ${PORT}`);
+      });
+    }
   });
 
 export default app;
