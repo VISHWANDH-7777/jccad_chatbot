@@ -166,7 +166,7 @@ export const ChatWorkspace: React.FC = () => {
             if (updated.length > 0) {
               updated[updated.length - 1] = {
                 role: 'assistant',
-                content: payload.error,
+                content: payload.error || 'An unknown error occurred.',
                 timestamp: new Date().toISOString()
               };
             }
