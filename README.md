@@ -1,6 +1,6 @@
 # JCCAD Company Intelligence Platform (CIP)
 
-An enterprise-ready Company Intelligence Platform and Conversational Chatbot designed for JCCAD Software Solutions. The platform features high-precision RAG (Retrieval-Augmented Generation) lookup, conversation memory coreference resolution, dual LLM provider support (Google Gemini & Groq), and an offline simulator fallback mode.
+An enterprise-ready Company Intelligence Platform and Conversational Chatbot designed for **JCCAD Software Solutions**. The platform combines Retrieval-Augmented Generation (RAG), semantic search, document intelligence, and conversational AI to provide accurate, company-specific answers (e.g. course offerings, training schedules, software expertise) while also supporting general AI queries.
 
 ---
 
@@ -26,7 +26,7 @@ The JCCAD Company Intelligence Platform (CIP) allows users to query company info
 
 - **Monorepo Manager:** npm Workspaces
 - **Frontend client:** React (v18), Vite, Tailwind CSS, Axios, React Router, React Hook Form, Zod
-- **Backend server:** Express.js, TypeScript, Mongoose (MongoDB ODM), dotenv
+- **Backend server:** Express.js, TypeScript, Mongoose (MongoDB ODM), dotenv, MongoDB
 - **Shared packages:** Common TypeScript mappings and schemas
 - **Testing:** Vitest
 
@@ -107,11 +107,52 @@ npm run build
 
 ---
 
+## Company Information
+
+**JCCAD Software Solutions**
+Engineering, Technology & Skill Development Hub
+
+### Services
+- CAD Training
+- CAD Design Services
+- Engineering Design & Product Development
+- Website Design & Development
+- Technology Solutions
+- Research & Development (R&D)
+- Engineering Consultancy
+- Internship Programs
+- Corporate Training
+
+### Software Expertise
+- AutoCAD
+- CATIA
+- SolidWorks
+- Siemens NX
+- PTC Creo
+- Fusion 360
+- ANSYS
+
+### Industries Served
+- Automotive
+- Mechanical
+- Manufacturing
+- Educational Institutions
+- Startups
+- MSMEs
+- Design Solutions (Drafting to Design)
+
+---
+
 ## Future Roadmap
 
 - **Multi-document Indexer:** Add support for dynamic PDF, DOCX, and CSV uploading and semantic chunking.
 - **Interactive Visual Knowledge Graph:** Map and render knowledge entities in a dashboard graph view for administrators.
 - **Enhanced Role-Based Access Control (RBAC):** Restrict indexing actions to administrative groups via SSO.
+- **OCR-based document understanding**
+- **AI Agent & Skills Framework**
+- **Voice interaction**
+- **Real-time document synchronization**
+- **Enterprise analytics**
 
 ---
 
