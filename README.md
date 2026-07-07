@@ -1,2 +1,3 @@
 # jccad_chatbot
-This is a demo code for jccad chatbot
+
+A demo implementation of the JCCAD Company Intelligence Platform, featuring an AI chatbot capable of answering company-specific and general queries.
