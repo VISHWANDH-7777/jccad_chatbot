@@ -21,7 +21,31 @@ import { seedJccadDatabase } from './utils/seeder';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jccad_platform';
+const rawMongodbUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jccad_platform';
+
+function sanitizeMongodbUri(uri: string): string {
+  if (!uri.startsWith('mongodb')) return uri;
+  try {
+    const lastAtIndex = uri.lastIndexOf('@');
+    if (lastAtIndex === -1) return uri;
+    const credentialsPart = uri.substring(0, lastAtIndex);
+    const hostPart = uri.substring(lastAtIndex + 1);
+    const protocolSeparator = '://';
+    const protocolIndex = credentialsPart.indexOf(protocolSeparator);
+    if (protocolIndex === -1) return uri;
+    const protocol = credentialsPart.substring(0, protocolIndex + protocolSeparator.length);
+    const userPass = credentialsPart.substring(protocolIndex + protocolSeparator.length);
+    if (userPass.includes('@')) {
+      const sanitizedUserPass = userPass.replace(/@/g, '%40');
+      return `${protocol}${sanitizedUserPass}@${hostPart}`;
+    }
+  } catch (err) {
+    // fallback
+  }
+  return uri;
+}
+
+const MONGODB_URI = sanitizeMongodbUri(rawMongodbUri);
 
 // Create uploads folder if not exists
 const uploadsDir = process.env.VERCEL
