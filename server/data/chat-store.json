@@ -2,6 +2,27 @@
   "localUserId": "6a506e46465dd242cf66f306",
   "conversations": [
     {
+      "_id": "6a507770465dd242cf66f313",
+      "userId": "6a506e46465dd242cf66f306",
+      "messages": [],
+      "createdAt": "2026-07-10T04:39:12.349Z",
+      "updatedAt": "2026-07-10T04:39:12.349Z"
+    },
+    {
+      "_id": "6a50773c465dd242cf66f312",
+      "userId": "6a506e46465dd242cf66f306",
+      "messages": [],
+      "createdAt": "2026-07-10T04:38:20.057Z",
+      "updatedAt": "2026-07-10T04:38:20.057Z"
+    },
+    {
+      "_id": "6a507738465dd242cf66f311",
+      "userId": "6a506e46465dd242cf66f306",
+      "messages": [],
+      "createdAt": "2026-07-10T04:38:16.751Z",
+      "updatedAt": "2026-07-10T04:38:16.751Z"
+    },
+    {
       "_id": "6a506e46465dd242cf66f307",
       "userId": "6a506e46465dd242cf66f306",
       "messages": [
@@ -112,6 +133,16 @@
     }
   ],
   "auditLogs": [
+    {
+      "userId": "6a506e46465dd242cf66f306",
+      "action": "conversation:feedback_up",
+      "resource": "0123456789abcdef01234567",
+      "ipAddress": "::ffff:127.0.0.1",
+      "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-IN) WindowsPowerShell/5.1.26100.8737",
+      "status": "success",
+      "details": "MsgIdx: 0. Notes: None",
+      "timestamp": "2026-07-10T04:38:20.062Z"
+    },
     {
       "userId": "6a506e46465dd242cf66f306",
       "action": "orchestration:stream_chat",
