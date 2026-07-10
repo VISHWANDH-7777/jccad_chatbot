@@ -1,9 +1,12 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { VectorRecord } from '../models/VectorRecord';
 import { AuditLog } from '../models/AuditLog';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { QueryIntent, RetrievalResult } from '../../../shared/types/retrieval';
 import { generateMockEmbedding, calculateCosineSimilarity } from './vector';
+import { OFFICIAL_KNOWLEDGE_BASE } from '../utils/seeder';
+import { planChunks } from './pipeline';
 
 // Simple In-memory Retrieval Cache to optimize search performance
 const searchCache = new Map<string, { timestamp: number; payload: any }>();
@@ -129,7 +132,39 @@ export const searchRetrieval = async (req: AuthenticatedRequest, res: Response) 
       filter['metadata.category'] = category;
     }
 
-    const allRecords = await VectorRecord.find(filter);
+    let allRecords: any[] = [];
+    if (mongoose.connection.readyState === 1) {
+      allRecords = await VectorRecord.find(filter);
+    } else {
+      console.warn('[RETRIEVAL] Database is offline. Performing retrieval using in-memory OFFICIAL_KNOWLEDGE_BASE fallback.');
+      const localRecords: any[] = [];
+      let mockIdCounter = 1;
+      for (const item of OFFICIAL_KNOWLEDGE_BASE) {
+        if (category && item.category !== category) {
+          continue;
+        }
+        const canonicalText = item.sections
+          .map((sec: any) => `# ${sec.heading}\n\n${sec.content}`)
+          .join('\n\n');
+
+        const rawChunks = planChunks(canonicalText);
+        for (let idx = 0; idx < rawChunks.length; idx++) {
+          const content = rawChunks[idx];
+          const embedding = generateMockEmbedding(content);
+          localRecords.push({
+            _id: `mock-chunk-id-${mockIdCounter++}`,
+            content,
+            embedding,
+            metadata: {
+              category: item.category,
+              visibility: 'Internal',
+              version: 1
+            }
+          });
+        }
+      }
+      allRecords = localRecords;
+    }
 
     const retrievalMatches = allRecords
       .map((rec) => {

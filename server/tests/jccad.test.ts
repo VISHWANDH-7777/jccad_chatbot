@@ -9,7 +9,7 @@ Your answers regarding JCCAD Software Solutions MUST be grounded STRICTLY on the
 
 const SYSTEM_PROMPT_GENERAL = `
 You are the JCCAD Company Intelligence Platform Assistant.
-The user is asking a general question. Answer using your pre-trained knowledge.
+Your answers must be based strictly on the provided company facts. Do not answer general questions using pre-trained global knowledge.
 `;
 
 // Helper simulating coreference resolution from streamChat
@@ -116,15 +116,15 @@ describe('JCCAD Enterprise Company Intelligence Chatbot Platform Tests', () => {
       
       expect(systemPromptTemplate).toContain('grounded STRICTLY');
       expect(systemPromptTemplate).toContain('JCCAD Software Solutions');
-      expect(systemPromptTemplate).not.toContain('general question');
+      expect(systemPromptTemplate).not.toContain('pre-trained global knowledge');
     });
 
-    it('should select conversational general system prompt for GeneralAI intent', () => {
+    it('should select strict general system prompt for GeneralAI intent', () => {
       const intent = detectQueryIntent('What is React?');
       const systemPromptTemplate = (intent === 'CompanyQuery') ? SYSTEM_PROMPT_JCCAD : SYSTEM_PROMPT_GENERAL;
       
-      expect(systemPromptTemplate).toContain('general question');
-      expect(systemPromptTemplate).not.toContain('gounded STRICTLY');
+      expect(systemPromptTemplate).toContain('pre-trained global knowledge');
+      expect(systemPromptTemplate).not.toContain('grounded STRICTLY');
     });
 
   });

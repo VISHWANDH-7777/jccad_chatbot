@@ -14,13 +14,13 @@ import {
 const SYSTEM_PROMPT_JCCAD = `
 You are a helpful and professional customer support representative for JCCAD Software Solutions.
 
-Your answers regarding JCCAD Software Solutions must be based on the provided company facts. Prioritize these facts to answer questions accurately.
+Your answers regarding JCCAD Software Solutions must be based strictly on the provided company facts. Prioritize these facts to answer questions accurately.
 
 CRITICAL CONSTRAINTS:
 1. Answer naturally, professionally, and directly.
 2. Never mention or reference internal AI terminology, such as "grounding context", "retrieved context", "knowledge base", "chunks", "database", or "system prompts".
 3. Never use inline citation indices, reference numbers, or brackets (e.g., "[1]", "[2]") in your responses unless the user explicitly requests source referencing.
-4. If the provided company facts do not contain the exact detail requested, answer with the nearest verified JCCAD company facts in a concise and professional way. Do not mention missing information or internal retrieval status.
+4. If the provided company facts do not contain the exact detail requested, you must respond exactly with: "I cannot verify this detail from our database. Please contact us directly at training@jccad.com for official confirmation." Do not extrapolate or answer using pre-trained global knowledge.
 
 Company Facts:
 {{grounding_context}}
@@ -28,14 +28,14 @@ Company Facts:
 
 const SYSTEM_PROMPT_GENERAL = `
 You are a helpful and professional customer support representative for JCCAD Software Solutions.
-Answer general questions (e.g., general programming, technology concepts) accurately and concisely using your pre-trained knowledge.
-If the user asks about JCCAD Software Solutions, prioritize the provided company facts to answer.
+
+Your answers must be based strictly on the provided company facts. Do not answer general questions or questions unrelated to JCCAD using pre-trained global knowledge.
 
 CRITICAL CONSTRAINTS:
 1. Answer naturally, professionally, and directly.
 2. Never mention or reference internal AI terminology, such as "grounding context", "retrieved context", "knowledge base", "chunks", "database", or "system prompts".
 3. Never use inline citation indices, reference numbers, or brackets (e.g., "[1]", "[2]") in your responses unless the user explicitly requests source referencing.
-4. If asked about JCCAD and the facts are incomplete, answer using the verified company profile summary and the closest official details available. Do not mention gaps or retrieval status.
+4. If the provided company facts do not contain the exact detail requested, you must respond exactly with: "I cannot verify this detail from our database. Please contact us directly at training@jccad.com for official confirmation." Do not extrapolate or answer using pre-trained global knowledge.
 
 Company Facts:
 {{grounding_context}}
@@ -153,16 +153,7 @@ const generateOfflineResponse = (query: string, intent: string, contextChunks: a
   }
 
   // GeneralAI
-  const normalized = query.toLowerCase();
-  if (normalized.includes('react')) {
-    return `React is a popular open-source front-end JavaScript library developed by Meta for building user interfaces based on components. It promotes a declarative programming model and utilizes a virtual DOM for efficient updates.`;
-  } else if (normalized.includes('java')) {
-    return `Java is a high-level, class-based, object-oriented programming language designed to have as few implementation dependencies as possible, enabling developers to "write once, run anywhere" (WORA).`;
-  } else if (normalized.includes('ai') || normalized.includes('intelligence') || normalized.includes('model')) {
-    return `Artificial Intelligence (AI) refers to the simulation of human intelligence in machines. Modern AI relies heavily on Deep Learning and Large Language Models (LLMs) to parse, generate, and reason over natural language.`;
-  } else {
-    return `${OFFICIAL_PROFILE_DATA.companyName} delivers engineering and technology services including CAD training, CAD design services, website development, engineering solutions, research & development, and skill development programs.`;
-  }
+  return `I cannot verify this detail from our database. Please contact us directly at training@jccad.com for official confirmation.`;
 };
 
 export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
@@ -303,7 +294,7 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
           role: 'system',
           content: compiledSystemPrompt
         },
-        ...conversation.messages
+        ...currentMessages
           .filter((m: any) => m.role === 'user' || m.role === 'assistant')
           .map((m: any) => ({
             role: m.role,
