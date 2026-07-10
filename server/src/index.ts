@@ -30,7 +30,9 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_ORIGIN || '')
+const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+const allowedOrigins = [process.env.CORS_ORIGIN || '', process.env.CLIENT_ORIGIN || '', vercelOrigin]
+  .join(',')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -43,7 +45,8 @@ app.use(cors({
           return;
         }
 
-        callback(new Error(`Origin ${origin} is not permitted by CORS`));
+        console.warn(`[CORS] Origin ${origin} is not in the allowed list. Request will continue without CORS headers.`);
+        callback(null, false);
       }
     : true,
   credentials: true

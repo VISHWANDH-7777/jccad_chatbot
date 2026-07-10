@@ -29,7 +29,10 @@ let connectionPromise: Promise<typeof mongoose> | null = null;
 let databaseOfflineMode = false;
 
 export async function connectDB(): Promise<typeof mongoose> {
-  const rawMongodbUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jccad_platform';
+  const rawMongodbUri = process.env.MONGODB_URI;
+  if (!rawMongodbUri) {
+    throw new Error('MONGODB_URI environment variable is required');
+  }
   const MONGODB_URI = sanitizeMongodbUri(rawMongodbUri);
 
   // If already connected, return

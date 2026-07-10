@@ -31,7 +31,8 @@ type LocalStore = {
   auditLogs: PersistedAuditLog[];
 };
 
-const STORE_PATH = process.env.JCCAD_CHAT_STORE_PATH || path.join(process.cwd(), 'data', 'chat-store.json');
+const STORE_PATH = process.env.JCCAD_CHAT_STORE_PATH
+  || (process.env.VERCEL ? '/tmp/chat-store.json' : path.join(process.cwd(), 'data', 'chat-store.json'));
 
 let storeCache: LocalStore | null = null;
 let storeLoadPromise: Promise<LocalStore> | null = null;
@@ -80,10 +81,19 @@ async function loadStore(): Promise<LocalStore> {
 async function persistStore(store: LocalStore): Promise<void> {
   storeCache = store;
   writeQueue = writeQueue.then(async () => {
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-    const tempPath = `${STORE_PATH}.tmp`;
-    await fs.writeFile(tempPath, JSON.stringify(store, null, 2), 'utf-8');
-    await fs.rename(tempPath, STORE_PATH);
+    try {
+      await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
+      const tempPath = `${STORE_PATH}.tmp`;
+      await fs.writeFile(tempPath, JSON.stringify(store, null, 2), 'utf-8');
+      await fs.rename(tempPath, STORE_PATH);
+    } catch (err) {
+      console.error('[CHAT_PERSISTENCE] Failed to persist local store:', err);
+      if (process.env.VERCEL) {
+        // Serverless filesystems can be ephemeral or read-only; keep the in-memory cache alive.
+        return;
+      }
+      throw err;
+    }
   });
   await writeQueue;
 }
