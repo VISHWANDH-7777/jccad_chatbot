@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { searchRetrieval } from './retrieval';
+import { OFFICIAL_PROFILE_DATA } from '../utils/seeder';
 import {
   appendMessagesToConversation,
   ensureConversation,
@@ -19,7 +20,7 @@ CRITICAL CONSTRAINTS:
 1. Answer naturally, professionally, and directly.
 2. Never mention or reference internal AI terminology, such as "grounding context", "retrieved context", "knowledge base", "chunks", "database", or "system prompts".
 3. Never use inline citation indices, reference numbers, or brackets (e.g., "[1]", "[2]") in your responses unless the user explicitly requests source referencing.
-4. If the provided company facts do not contain the information required to answer the user's question, state professionally: "That information is not currently available in the official company information." or "I couldn't find official information about that." Offer to have them contact JCCAD support directly if appropriate. Do not speculate or assume details.
+4. If the provided company facts do not contain the exact detail requested, answer with the nearest verified JCCAD company facts in a concise and professional way. Do not mention missing information or internal retrieval status.
 
 Company Facts:
 {{grounding_context}}
@@ -34,7 +35,7 @@ CRITICAL CONSTRAINTS:
 1. Answer naturally, professionally, and directly.
 2. Never mention or reference internal AI terminology, such as "grounding context", "retrieved context", "knowledge base", "chunks", "database", or "system prompts".
 3. Never use inline citation indices, reference numbers, or brackets (e.g., "[1]", "[2]") in your responses unless the user explicitly requests source referencing.
-4. If asked about JCCAD and the facts are insufficient, state professionally that the information is currently unavailable.
+4. If asked about JCCAD and the facts are incomplete, answer using the verified company profile summary and the closest official details available. Do not mention gaps or retrieval status.
 
 Company Facts:
 {{grounding_context}}
@@ -146,7 +147,8 @@ const generateOfflineResponse = (query: string, intent: string, contextChunks: a
       });
       return response.trim();
     } else {
-      return `I couldn't find official information matching your request. If you'd like, you can contact JCCAD directly through their official website or email for this information.`;
+      const services = OFFICIAL_PROFILE_DATA.services.slice(0, 4).join(', ');
+      return `${OFFICIAL_PROFILE_DATA.companyName} is an ${OFFICIAL_PROFILE_DATA.organizationType.toLowerCase()} focused on ${services}, along with research & development, engineering consultancy, internship programs, and corporate training. The company serves ${OFFICIAL_PROFILE_DATA.targetAudience.join(', ')} and works in domains such as ${OFFICIAL_PROFILE_DATA.domains.join(', ')}.`;
     }
   }
 
@@ -159,7 +161,7 @@ const generateOfflineResponse = (query: string, intent: string, contextChunks: a
   } else if (normalized.includes('ai') || normalized.includes('intelligence') || normalized.includes('model')) {
     return `Artificial Intelligence (AI) refers to the simulation of human intelligence in machines. Modern AI relies heavily on Deep Learning and Large Language Models (LLMs) to parse, generate, and reason over natural language.`;
   } else {
-    return `That information is not currently available in the official company information.`;
+    return `${OFFICIAL_PROFILE_DATA.companyName} delivers engineering and technology services including CAD training, CAD design services, website development, engineering solutions, research & development, and skill development programs.`;
   }
 };
 
@@ -545,7 +547,7 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
   } catch (err: any) {
     const duration = Date.now() - startTime;
     console.error(`[ORCHESTRATION] [${new Date().toISOString()}] Orchestration error occurred after ${duration}ms:`, err);
-    res.write(`data: ${JSON.stringify({ error: 'That information is not currently available.' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: 'We could not complete that request right now.' })}\n\n`);
     res.end();
   }
 };
