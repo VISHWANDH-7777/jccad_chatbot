@@ -24,6 +24,22 @@ function sanitizeMongodbUri(uri: string): string {
   return uri;
 }
 
+function ensureDatabaseName(uri: string): string {
+  try {
+    const url = new URL(uri);
+    const hasDatabaseName = url.pathname && url.pathname !== '/';
+    if (hasDatabaseName) {
+      return uri;
+    }
+
+    const defaultDatabaseName = process.env.MONGODB_DB || 'jccad_platform';
+    url.pathname = `/${defaultDatabaseName}`;
+    return url.toString();
+  } catch {
+    return uri;
+  }
+}
+
 let isSeeded = false;
 let connectionPromise: Promise<typeof mongoose> | null = null;
 let databaseOfflineMode = false;
@@ -33,7 +49,7 @@ export async function connectDB(): Promise<typeof mongoose> {
   if (!rawMongodbUri) {
     throw new Error('MONGODB_URI environment variable is required');
   }
-  const MONGODB_URI = sanitizeMongodbUri(rawMongodbUri);
+  const MONGODB_URI = ensureDatabaseName(sanitizeMongodbUri(rawMongodbUri));
 
   // If already connected, return
   if (mongoose.connection.readyState === 1) {
