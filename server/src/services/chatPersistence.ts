@@ -34,8 +34,6 @@ type LocalStore = {
 const STORE_PATH = process.env.JCCAD_CHAT_STORE_PATH
   || (process.env.VERCEL ? '/tmp/chat-store.json' : path.join(process.cwd(), 'data', 'chat-store.json'));
 
-const forceMongoInProduction = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
-
 let storeCache: LocalStore | null = null;
 let storeLoadPromise: Promise<LocalStore> | null = null;
 let writeQueue: Promise<void> = Promise.resolve();
@@ -81,7 +79,7 @@ async function loadStore(): Promise<LocalStore> {
 }
 
 export function isLocalFallbackEnabled(): boolean {
-  return !forceMongoInProduction;
+  return true;
 }
 
 async function persistStore(store: LocalStore): Promise<void> {
@@ -142,11 +140,7 @@ export async function getLocalDemoUserId(): Promise<string> {
 }
 
 export async function ensureConversation(userId: string, conversationId?: string | null): Promise<PersistedConversation> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     if (conversationId) {
       const existing = await Conversation.findOne({ _id: conversationId, userId });
       if (existing) {
@@ -180,11 +174,7 @@ export async function ensureConversation(userId: string, conversationId?: string
 }
 
 export async function listConversationsForUser(userId: string): Promise<ConversationSummary[]> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const list = await Conversation.find({ userId })
       .select('id messages updatedAt')
       .sort({ updatedAt: -1 });
@@ -208,11 +198,7 @@ export async function listConversationsForUser(userId: string): Promise<Conversa
 }
 
 export async function listConversationHistory(userId: string): Promise<PersistedConversation[]> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const history = await Conversation.find({ userId }).sort({ updatedAt: -1 });
     return history.map(normalizeConversation);
   }
@@ -228,11 +214,7 @@ export async function appendMessagesToConversation(
   conversationId: string,
   messages: ChatMessage[]
 ): Promise<PersistedConversation | null> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const updated = await Conversation.findOneAndUpdate(
       { _id: conversationId, userId },
       {
@@ -258,11 +240,7 @@ export async function appendMessagesToConversation(
 }
 
 export async function getConversationForUser(userId: string, conversationId: string): Promise<PersistedConversation | null> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const conversation = await Conversation.findOne({ _id: conversationId, userId });
     return conversation ? normalizeConversation(conversation) : null;
   }
@@ -278,11 +256,7 @@ export async function renameConversationForUser(userId: string, conversationId: 
     timestamp: new Date().toISOString()
   };
 
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const updated = await Conversation.findOneAndUpdate(
       { _id: conversationId, userId },
       {
@@ -307,11 +281,7 @@ export async function renameConversationForUser(userId: string, conversationId: 
 }
 
 export async function deleteConversationForUser(userId: string, conversationId: string): Promise<boolean> {
-  if (isMongoReady() || forceMongoInProduction) {
-    if (!isMongoReady()) {
-      throw new Error('MongoDB is required in production, but the connection is not ready');
-    }
-
+  if (isMongoReady()) {
     const result = await Conversation.deleteOne({ _id: conversationId, userId });
     return result.deletedCount > 0;
   }
