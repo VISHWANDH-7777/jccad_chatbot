@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -17,35 +16,10 @@ import orchestrationRoutes from './routes/orchestration';
 import conversationRoutes from './routes/conversation';
 import toolsRoutes from './routes/tools';
 import { initializeGeminiModel } from './controllers/orchestration';
-import { seedJccadDatabase } from './utils/seeder';
+import { connectDB, dbConnectionMiddleware } from './middleware/db';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const rawMongodbUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jccad_platform';
-
-function sanitizeMongodbUri(uri: string): string {
-  if (!uri.startsWith('mongodb')) return uri;
-  try {
-    const lastAtIndex = uri.lastIndexOf('@');
-    if (lastAtIndex === -1) return uri;
-    const credentialsPart = uri.substring(0, lastAtIndex);
-    const hostPart = uri.substring(lastAtIndex + 1);
-    const protocolSeparator = '://';
-    const protocolIndex = credentialsPart.indexOf(protocolSeparator);
-    if (protocolIndex === -1) return uri;
-    const protocol = credentialsPart.substring(0, protocolIndex + protocolSeparator.length);
-    const userPass = credentialsPart.substring(protocolIndex + protocolSeparator.length);
-    if (userPass.includes('@')) {
-      const sanitizedUserPass = userPass.replace(/@/g, '%40');
-      return `${protocol}${sanitizedUserPass}@${hostPart}`;
-    }
-  } catch (err) {
-    // fallback
-  }
-  return uri;
-}
-
-const MONGODB_URI = sanitizeMongodbUri(rawMongodbUri);
 
 // Create uploads folder if not exists
 const uploadsDir = process.env.VERCEL
@@ -67,6 +41,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded images static route
 app.use('/uploads', express.static(uploadsDir));
 
+// Database connectivity check for API routes
+app.use('/api', dbConnectionMiddleware);
+
 // Route bindings
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/document', documentRoutes);
@@ -83,34 +60,26 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', services: ['database', 'indexing', 'orchestration'] });
 });
 
-// Database connection & listener initiation
-mongoose.connect(MONGODB_URI)
-  .then(async () => {
-    console.log(`Connected to MongoDB at ${MONGODB_URI}`);
-    
-    // Seed database with official JCCAD profile content
-    await seedJccadDatabase();
-    
-    // Initialize & validate Gemini Model configuration
-    await initializeGeminiModel();
-
-    if (!process.env.VERCEL) {
+// Initialize database connection dynamically. 
+// For non-vercel environments, start server listener.
+if (!process.env.VERCEL) {
+  connectDB()
+    .then(async () => {
+      await initializeGeminiModel();
       app.listen(PORT, () => {
         console.log(`JCCAD CIP Backend listening on port ${PORT}`);
       });
-    }
-  })
-  .catch(async (err) => {
-    console.error('Database connection failed. Starting server in offline test mode.');
-
-    // Initialize & validate Gemini Model configuration
-    await initializeGeminiModel();
-
-    if (!process.env.VERCEL) {
+    })
+    .catch(async (err) => {
+      console.error('Database connection failed. Starting server in offline test mode.');
+      await initializeGeminiModel();
       app.listen(PORT, () => {
         console.log(`JCCAD CIP Backend listening in offline mode on port ${PORT}`);
       });
-    }
-  });
+    });
+} else {
+  // In serverless environment, pre-initialize the model configuration asynchronously
+  initializeGeminiModel().catch(err => console.error('Failed to initialize Gemini model:', err));
+}
 
 export default app;
