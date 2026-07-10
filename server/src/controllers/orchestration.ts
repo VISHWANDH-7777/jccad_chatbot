@@ -1,8 +1,13 @@
 import { Response } from 'express';
-import { Conversation } from '../models/Conversation';
-import { AuditLog } from '../models/AuditLog';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { searchRetrieval } from './retrieval';
+import {
+  appendMessagesToConversation,
+  ensureConversation,
+  getConversationForUser,
+  listConversationHistory,
+  recordAuditLog
+} from '../services/chatPersistence';
 
 // Strict System Prompt template configuration for Company Queries
 const SYSTEM_PROMPT_JCCAD = `
@@ -178,19 +183,14 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
 
   let activeModelName = ACTIVE_GEMINI_MODEL;
-  let conversation = null;
+  let conversation: any = null;
 
   try {
     if (conversationId) {
-      conversation = await Conversation.findById(conversationId);
+      conversation = await getConversationForUser(user.id, conversationId);
     }
 
-    if (!conversation) {
-      conversation = new Conversation({
-        userId: user.id,
-        messages: []
-      });
-    }
+    conversation = await ensureConversation(user.id, conversationId || null);
 
     // Call Retrieval Engine
     // Coreference Resolution: check if query contains company pronouns and history has JCCAD context
@@ -254,16 +254,23 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
     console.log(`[ORCHESTRATION] [${new Date().toISOString()}] Prompt Built:\n--- SYSTEM PROMPT ---\n${compiledSystemPrompt.trim()}\n----------------------`);
 
     // Save user message to thread
-    conversation.messages.push({
+    const currentMessages = [
+      ...conversation.messages,
+      {
+        role: 'user',
+        content: query,
+        timestamp: new Date().toISOString()
+      }
+    ];
+
+    await appendMessagesToConversation(user.id, conversation._id, [{
       role: 'user',
       content: query,
       timestamp: new Date().toISOString()
-    });
-
-    await conversation.save();
+    }]);
 
     // Map conversation message history to Gemini API format (role must be 'user' or 'model')
-    const contents = conversation.messages
+    const contents = currentMessages
       .filter((m: any) => m.role === 'user' || m.role === 'assistant')
       .map((m: any) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -507,14 +514,12 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
       const followUp = generateFollowUpQuestions(query);
 
       // Save assistant response to conversation thread
-      conversation.messages.push({
+        await appendMessagesToConversation(user.id, conversation._id, [{
         role: 'assistant',
         content: accumulatedText,
         timestamp: new Date().toISOString(),
         citations: retrievalResult.citations
-      });
-
-      await conversation.save();
+        }]);
 
       // Send termination metadata and suggestions
       res.write(
@@ -525,7 +530,7 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
         })}\n\n`
       );
 
-      await AuditLog.create({
+      await recordAuditLog({
         userId: user.id,
         action: 'orchestration:stream_chat',
         resource: conversation._id.toString(),
@@ -548,7 +553,7 @@ export const streamChat = async (req: AuthenticatedRequest, res: Response) => {
 export const getConversationHistory = async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   try {
-    const history = await Conversation.find({ userId: user.id }).sort({ updatedAt: -1 });
+    const history = await listConversationHistory(user.id);
     // Filter out internal citations metadata from messages
     const cleanedHistory = history.map((conv: any) => {
       const messages = conv.messages.map((msg: any) => {
@@ -562,6 +567,7 @@ export const getConversationHistory = async (req: AuthenticatedRequest, res: Res
     });
     return res.status(200).json({ history: cleanedHistory });
   } catch (err: any) {
+    console.error('[ORCHESTRATION] getConversationHistory failed:', err);
     return res.status(500).json({ error: 'Error fetching conversation thread history' });
   }
 };

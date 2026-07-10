@@ -1,0 +1,10 @@
+node_modules
+.git
+.vercel
+client/dist
+server/dist
+server/tests
+tests
+memories
+*.log
+*.md

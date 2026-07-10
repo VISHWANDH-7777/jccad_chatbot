@@ -30,8 +30,22 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
+const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite client dev server
+  origin: allowedOrigins.length > 0
+    ? (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origin ${origin} is not permitted by CORS`));
+      }
+    : true,
   credentials: true
 }));
 app.use(cookieParser());

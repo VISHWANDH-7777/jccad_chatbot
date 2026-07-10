@@ -90,8 +90,8 @@ Run from the root workspace directory:
 ```bash
 npm run dev
 ```
-- **Frontend Client:** Available at [http://localhost:5173](http://localhost:5173)
-- **Backend API Server:** Available at [http://localhost:5000](http://localhost:5000)
+- **Frontend Client:** Available at your Vercel frontend URL
+- **Backend API Server:** Available at your backend deployment URL
 
 ### Running Tests
 Run Vitest execution for server files:

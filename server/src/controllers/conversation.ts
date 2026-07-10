@@ -1,21 +1,24 @@
 import { Response } from 'express';
-import { Conversation } from '../models/Conversation';
-import { AuditLog } from '../models/AuditLog';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { FeedbackPayload } from '../../../shared/types/conversation';
 import fs from 'fs';
+import {
+  appendMessagesToConversation,
+  deleteConversationForUser,
+  ensureConversation,
+  listConversationsForUser,
+  recordAuditLog,
+  recordConversationFeedback,
+  renameConversationForUser
+} from '../services/chatPersistence';
 
 export const createConversation = async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   try {
-    const conversation = new Conversation({
-      userId: user.id,
-      messages: []
-    });
-
-    await conversation.save();
+    const conversation = await ensureConversation(user.id);
     return res.status(201).json({ conversation });
   } catch (err: any) {
+    console.error('[CONVERSATION] createConversation failed:', err);
     return res.status(500).json({ error: 'Server error creating conversation' });
   }
 };
@@ -23,22 +26,10 @@ export const createConversation = async (req: AuthenticatedRequest, res: Respons
 export const listConversations = async (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
   try {
-    const list = await Conversation.find({ userId: user.id })
-      .select('id messages updatedAt')
-      .sort({ updatedAt: -1 });
-
-    const summaries = list.map((c) => {
-      const firstMessage = c.messages.find((m) => m.role === 'user');
-      const title = firstMessage ? firstMessage.content.substring(0, 30) + '...' : 'New Chat Thread';
-      return {
-        id: c._id,
-        title,
-        updatedAt: c.updatedAt
-      };
-    });
-
+    const summaries = await listConversationsForUser(user.id);
     return res.status(200).json({ conversations: summaries });
   } catch (err: any) {
+    console.error('[CONVERSATION] listConversations failed:', err);
     return res.status(500).json({ error: 'Server error listing conversations' });
   }
 };
@@ -53,22 +44,13 @@ export const renameConversation = async (req: AuthenticatedRequest, res: Respons
   }
 
   try {
-    const conversation = await Conversation.findOne({ _id: id, userId: user.id });
-    if (!conversation) {
+    const updated = await renameConversationForUser(user.id, id, title);
+    if (!updated) {
       return res.status(404).json({ error: 'Conversation thread not found' });
     }
-
-    // Since title is virtual derived from first message content,
-    // we inject a system note message holding the title metadata
-    conversation.messages.push({
-      role: 'system',
-      content: `System: Renamed thread to ${title}`,
-      timestamp: new Date().toISOString()
-    });
-
-    await conversation.save();
     return res.status(200).json({ message: 'Conversation renamed successfully', title });
   } catch (err: any) {
+    console.error('[CONVERSATION] renameConversation failed:', err);
     return res.status(500).json({ error: 'Server error during renaming' });
   }
 };
@@ -80,12 +62,12 @@ export const deleteConversation = async (req: AuthenticatedRequest, res: Respons
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   try {
-    const result = await Conversation.deleteOne({ _id: id, userId: user.id });
-    if (result.deletedCount === 0) {
+    const deleted = await deleteConversationForUser(user.id, id);
+    if (!deleted) {
       return res.status(404).json({ error: 'Conversation not found or unauthorized' });
     }
 
-    await AuditLog.create({
+    await recordAuditLog({
       userId: user.id,
       action: 'conversation:delete',
       resource: id,
@@ -96,6 +78,7 @@ export const deleteConversation = async (req: AuthenticatedRequest, res: Respons
 
     return res.status(200).json({ message: 'Conversation deleted successfully' });
   } catch (err: any) {
+    console.error('[CONVERSATION] deleteConversation failed:', err);
     return res.status(500).json({ error: 'Server error during deletion' });
   }
 };
@@ -105,7 +88,7 @@ export const exportConversation = async (req: AuthenticatedRequest, res: Respons
   const user = req.user!;
 
   try {
-    const conversation = await Conversation.findOne({ _id: id, userId: user.id });
+    const conversation = await ensureConversation(user.id, id);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
@@ -137,23 +120,16 @@ export const submitFeedback = async (req: AuthenticatedRequest, res: Response) =
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   try {
-    const conversation = await Conversation.findOne({ _id: id, userId: user.id });
+    const conversation = await ensureConversation(user.id, id);
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    await AuditLog.create({
-      userId: user.id,
-      action: `conversation:feedback_${rating}`,
-      resource: id,
-      ipAddress,
-      userAgent,
-      status: 'success',
-      details: `MsgIdx: ${messageIndex}. Notes: ${notes || 'None'}`
-    });
+    await recordConversationFeedback(user.id, id, { messageIndex, rating, notes }, ipAddress, userAgent);
 
     return res.status(200).json({ message: 'Feedback logged successfully' });
   } catch (err: any) {
+    console.error('[CONVERSATION] submitFeedback failed:', err);
     return res.status(500).json({ error: 'Server error saving feedback' });
   }
 };
@@ -175,7 +151,7 @@ export const uploadImage = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   try {
-    await AuditLog.create({
+    await recordAuditLog({
       userId: user.id,
       action: 'conversation:image_upload',
       resource: file.originalname,
@@ -193,6 +169,7 @@ export const uploadImage = async (req: AuthenticatedRequest, res: Response) => {
     });
   } catch (err: any) {
     if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    console.error('[CONVERSATION] uploadImage failed:', err);
     return res.status(500).json({ error: 'Server error processing image' });
   }
 };

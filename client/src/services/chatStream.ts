@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { apiUrl } from './api';
 
 interface StreamCallbackParams {
   chunk?: string;
@@ -20,7 +21,7 @@ export const executeChatStream = async (
   signal?: AbortSignal
 ) => {
   try {
-    const response = await fetch('/api/v1/orchestration/chat', {
+    const response = await fetch(apiUrl('/api/v1/orchestration/chat'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

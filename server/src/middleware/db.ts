@@ -26,6 +26,7 @@ function sanitizeMongodbUri(uri: string): string {
 
 let isSeeded = false;
 let connectionPromise: Promise<typeof mongoose> | null = null;
+let databaseOfflineMode = false;
 
 export async function connectDB(): Promise<typeof mongoose> {
   const rawMongodbUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jccad_platform';
@@ -64,18 +65,26 @@ export async function connectDB(): Promise<typeof mongoose> {
     return mongoose;
   } catch (err) {
     connectionPromise = null; // Reset promise on failure so next request triggers retry
+    databaseOfflineMode = true;
     throw err;
   }
 }
 
+export function isDatabaseReady(): boolean {
+  return mongoose.connection.readyState === 1;
+}
+
 export const dbConnectionMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (databaseOfflineMode || mongoose.connection.readyState === 1) {
+    return next();
+  }
+
   try {
     await connectDB();
     next();
   } catch (err: any) {
     console.error('Database connection error in middleware:', err.message);
-    res.status(503).json({
-      error: 'System databases are currently offline. Retrying connection...'
-    });
+    console.warn(`Proceeding with local chat fallback for ${req.method} ${req.originalUrl}`);
+    next();
   }
 };

@@ -32,18 +32,13 @@ describe('Database Connectivity and Middleware Tests', () => {
     expect(elapsed).toBeLessThan(10000);
   });
 
-  it('should immediately return a 503 response if database connection fails in the middleware', async () => {
+  it('should continue to the route when database connection fails in the middleware', async () => {
     const mockReq = {} as Request;
-    let statusSet: number | null = null;
-    let responseJson: any = null;
-
     const mockRes = {
-      status(s: number) {
-        statusSet = s;
+      status() {
         return this;
       },
-      json(j: any) {
-        responseJson = j;
+      json() {
         return this;
       }
     } as unknown as Response;
@@ -55,9 +50,6 @@ describe('Database Connectivity and Middleware Tests', () => {
 
     await dbConnectionMiddleware(mockReq, mockRes, next);
 
-    expect(nextCalled).toBe(false);
-    expect(statusSet).toBe(503);
-    expect(responseJson).toBeDefined();
-    expect(responseJson.error).toBe('System databases are currently offline. Retrying connection...');
+    expect(nextCalled).toBe(true);
   });
 });

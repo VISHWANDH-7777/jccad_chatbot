@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserRole, UserPermission, RolePermissions } from '../../../shared/types/auth';
 import { User } from '../models/User';
+import { getLocalDemoUserId } from '../services/chatPersistence';
+import { isDatabaseReady } from './db';
 
 // Explicit RBAC permission definition and hierarchy matrix
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
@@ -83,6 +85,16 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    if (!isDatabaseReady()) {
+      const localUserId = await getLocalDemoUserId();
+      req.user = {
+        id: localUserId,
+        role: 'Super Administrator',
+        permissions: resolvePermissions('Super Administrator')
+      };
+      return next();
+    }
+
     let user = await User.findOne({ email: 'demo@jccad.com' });
     if (!user) {
       user = await User.create({
@@ -100,7 +112,17 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
     };
     next();
   } catch (err: any) {
-    next(err);
+    try {
+      const localUserId = await getLocalDemoUserId();
+      req.user = {
+        id: localUserId,
+        role: 'Super Administrator',
+        permissions: resolvePermissions('Super Administrator')
+      };
+      next();
+    } catch (fallbackErr) {
+      next(err);
+    }
   }
 };
 
